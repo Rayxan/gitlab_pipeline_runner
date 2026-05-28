@@ -1,25 +1,25 @@
 /**
  * GitLab Pipeline Auto-Runner (DevTools Console)
  * ================================================
- * Cole este código inteiro no console do DevTools (F12) enquanto estiver
- * na página do pipeline do GitLab. Ele vai disparar automaticamente todos
- * os jobs manuais assim que ficarem disponíveis.
+ * Paste this entire code in the DevTools console (F12) while on the
+ * GitLab pipeline page. It will automatically trigger all manual jobs
+ * as soon as they become available.
  *
- * Como parar:
+ * How to stop:
  *   clearInterval(window.__pipelineRunner)
  *
- * Como alterar o intervalo (padrão 10s):
- *   Mude a constante POLL_INTERVAL_MS antes de colar.
+ * How to change the interval (default 10s):
+ *   Change the POLL_INTERVAL_MS constant before pasting.
  */
 
 (function () {
-  const POLL_INTERVAL_MS = 10000; // intervalo de verificação em ms (10 segundos)
+  const POLL_INTERVAL_MS = 10000; // polling interval in ms (10 seconds)
 
-  // Guarda as chaves dos botões já clicados para não disparar duas vezes
+  // Stores keys of already-clicked buttons to avoid double-triggering
   const clicked = new Set();
 
   // -------------------------------------------------------------------------
-  // Utilitários de log com timestamp
+  // Log utilities with timestamp
   // -------------------------------------------------------------------------
   const log = {
     info:    (msg) => console.log( `%c[${ts()}] ℹ️  ${msg}`, "color: #6a9fd8"),
@@ -29,23 +29,23 @@
   };
 
   function ts() {
-    return new Date().toLocaleTimeString("pt-BR");
+    return new Date().toLocaleTimeString("en-US");
   }
 
   // -------------------------------------------------------------------------
-  // Lê o nome do job (div interno com title dentro do link de status)
+  // Reads the job name (inner div with title inside the status link)
   // -------------------------------------------------------------------------
   function getJobName(jobItem) {
-    // O link ci-job-item-content tem title="manual action", mas dentro dele
-    // há um <div title="nome-do-job"> com o nome real
+    // The ci-job-item-content link has title="manual action", but inside it
+    // there is a <div title="job-name"> with the actual name
     const nameEl = jobItem.querySelector(
       '[data-testid="ci-job-item-content"] [title]'
     );
-    return nameEl ? nameEl.getAttribute("title") : "desconhecido";
+    return nameEl ? nameEl.getAttribute("title") : "unknown";
   }
 
   // -------------------------------------------------------------------------
-  // Descobre o nome do stage a partir do ancestral stage-column
+  // Discovers the stage name from the ancestor stage-column
   // -------------------------------------------------------------------------
   function getStageName(jobItem) {
     const stageCol = jobItem.closest('[data-testid="stage-column"]');
@@ -55,21 +55,21 @@
   }
 
   // -------------------------------------------------------------------------
-  // Retorna chave única para identificar o botão (evita duplo disparo)
+  // Returns a unique key to identify the button (avoids double-triggering)
   // -------------------------------------------------------------------------
   function getButtonKey(playBtn) {
-    // O id contém o path do job, ex: js-ci-action-.../jobs/509224/play
+    // The id contains the job path, e.g.: js-ci-action-.../jobs/509224/play
     return playBtn.id || playBtn.closest('[data-testid="ci-job-item"]')?.id || Math.random();
   }
 
   // -------------------------------------------------------------------------
-  // Retorna todos os jobs com botão "Run" disponível (prontos para disparar)
+  // Returns all jobs with an available "Run" button (ready to trigger)
   // -------------------------------------------------------------------------
   function findManualJobs() {
-    // Se o botão [title="Run"] existe no item é porque o job está aguardando
-    // disparo manual — não precisamos checar o status separadamente.
-    // NOTA: o title do link de status é "manual action" (não "manual"),
-    //       por isso a versão anterior não encontrava os jobs.
+    // If the [title="Run"] button exists in the item, the job is waiting
+    // for manual trigger — no need to check status separately.
+    // NOTE: the status link title is "manual action" (not "manual"),
+    //       which is why the previous version couldn't find the jobs.
     const jobItems = document.querySelectorAll('[data-testid="ci-job-item"]');
     const pending = [];
 
@@ -87,7 +87,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // Verifica se o pipeline chegou ao fim (todos os jobs em estado terminal)
+  // Checks if the pipeline has ended (all jobs in a terminal state)
   // -------------------------------------------------------------------------
   function isPipelineFinished() {
     const allItems = document.querySelectorAll('[data-testid="ci-job-item"]');
@@ -105,36 +105,36 @@
   }
 
   // -------------------------------------------------------------------------
-  // Tick principal: chamado a cada intervalo
+  // Main cycle: called at each interval
   // -------------------------------------------------------------------------
-  function tick() {
+  function cycle() {
     const manualJobs = findManualJobs();
 
     if (manualJobs.length === 0) {
       if (isPipelineFinished()) {
-        log.success("Pipeline finalizado! Encerrando o auto-runner.");
+        log.success("Pipeline finished! Shutting down the auto-runner.");
         clearInterval(window.__pipelineRunner);
         return;
       }
-      log.info("Aguardando jobs manuais...");
+      log.info("Waiting for manual jobs...");
       return;
     }
 
     for (const { item, playBtn, key } of manualJobs) {
       const name  = getJobName(item);
       const stage = getStageName(item);
-      log.success(`Disparando [${stage}] → ${name}`);
+      log.success(`Triggering [${stage}] → ${name}`);
       clicked.add(key);
       playBtn.click();
     }
   }
 
   // -------------------------------------------------------------------------
-  // Inicialização
+  // Initialization
   // -------------------------------------------------------------------------
-  console.log("%c🚀 GitLab Pipeline Auto-Runner iniciado!", "font-size:14px; font-weight:bold; color:#fc6d26");
-  console.log(`%cPolling a cada ${POLL_INTERVAL_MS / 1000}s.  Para parar: clearInterval(window.__pipelineRunner)`, "color: #aaa");
+  console.log("%c🚀 GitLab Pipeline Auto-Runner started!", "font-size:14px; font-weight:bold; color:#fc6d26");
+  console.log(`%cPolling every ${POLL_INTERVAL_MS / 1000}s.  To stop: clearInterval(window.__pipelineRunner)`, "color: #aaa");
 
-  tick(); // executa imediatamente na primeira vez
-  window.__pipelineRunner = setInterval(tick, POLL_INTERVAL_MS);
+  cycle(); // runs immediately on the first call
+  window.__pipelineRunner = setInterval(cycle, POLL_INTERVAL_MS);
 })();
